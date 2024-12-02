@@ -127,13 +127,57 @@ template.layout.yaxis.update(gridcolor=COLORS['grid'])
 pio.templates["custom_dark"] = template
 pio.templates.default = "custom_dark"
 
-# Load and cache data
+# Cache the data loading
 @st.cache_data
 def load_data():
     df = pd.read_csv('aerofit_treadmill_data.csv')
     return df
 
+# Cache the statistical computations
+@st.cache_data
+def compute_statistics(df):
+    stats = {
+        'gender_dist': pd.crosstab(df['Product'], df['Gender'], normalize='index') * 100,
+        'marital_dist': pd.crosstab(df['Product'], df['MaritalStatus'], normalize='index') * 100,
+        'education_dist': pd.crosstab(df['Product'], df['Education'], normalize='index') * 100,
+        'usage_stats': df.groupby('Product')['Usage'].agg(['mean', 'median', 'std']).round(2),
+        'miles_stats': df.groupby('Product')['Miles'].agg(['mean', 'median', 'std']).round(2),
+        'income_stats': df.groupby('Product')['Income'].agg(['mean', 'median', 'std']).round(2)
+    }
+    return stats
+
+# Load data and compute statistics once
 df = load_data()
+stats = compute_statistics(df)
+
+# Sidebar metrics
+total_customers = len(df)
+avg_age = df['Age'].mean()
+avg_income = df['Income'].mean()
+
+# Sidebar
+st.sidebar.title("🏃‍♂️ AeroFit Analytics")
+
+# Display key metrics in sidebar
+st.sidebar.markdown(f"""
+    <div style='padding: 10px; background-color: {COLORS['card']}; border-radius: 5px; margin: 10px 0;'>
+        <h4>Key Metrics</h4>
+        <p>Total Customers: {total_customers:,}</p>
+        <p>Average Age: {avg_age:.1f}</p>
+        <p>Average Income: ${avg_income:,.0f}</p>
+    </div>
+""", unsafe_allow_html=True)
+
+# Navigation
+sections = [
+    "Product Overview",
+    "Customer Segments",
+    "Target Audience Analysis",
+    "Usage Analysis",
+    "Financial Insights",
+    "Recommendations"
+]
+section = st.sidebar.selectbox("Choose Analysis Section", sections)
 
 # Chart creation functions
 def create_bar_chart(data, x, y, title, color=None):
@@ -227,42 +271,8 @@ def create_scatter_plot(data, x, y, title, color=None, size=None):
     )
     return fig
 
-# Sidebar
-with st.sidebar:
-    st.title("🏃‍♂️ AeroFit Analytics")
-    
-    # Key metrics
-    total_customers = len(df)
-    avg_age = df['Age'].mean()
-    avg_income = df['Income'].mean()
-    
-    st.markdown("""
-        <div class="metric-card">
-            <div class="metric-value">{:,}</div>
-            <div class="metric-label">Total Customers</div>
-        </div>
-        
-        <div class="metric-card">
-            <div class="metric-value">{:.1f}</div>
-            <div class="metric-label">Average Age</div>
-        </div>
-        
-        <div class="metric-card">
-            <div class="metric-value">${:,.0f}</div>
-            <div class="metric-label">Average Income</div>
-        </div>
-    """.format(total_customers, avg_age, avg_income), unsafe_allow_html=True)
-    
-    st.markdown("---")
-    
-    # Navigation
-    section = st.radio(
-        "Select Analysis",
-        ["Overview", "Customer Segments", "Usage Analysis", "Financial Insights", "Recommendations"]
-    )
-
 # Main content sections
-if section == "Overview":
+if section == "Product Overview":
     st.title("Product Overview")
     
     col1, col2 = st.columns(2)
@@ -322,7 +332,7 @@ elif section == "Customer Segments":
     
     with col1:
         # Gender Distribution
-        gender_dist = pd.crosstab(df['Product'], df['Gender'], normalize='index') * 100
+        gender_dist = stats['gender_dist']
         gender_dist_reset = gender_dist.reset_index()
         fig = create_bar_chart(
             gender_dist_reset,
@@ -333,7 +343,7 @@ elif section == "Customer Segments":
         st.plotly_chart(fig, use_container_width=True)
         
         # Marital Status
-        marital_dist = pd.crosstab(df['Product'], df['MaritalStatus'], normalize='index') * 100
+        marital_dist = stats['marital_dist']
         marital_dist_reset = marital_dist.reset_index()
         fig = create_bar_chart(
             marital_dist_reset,
@@ -408,8 +418,172 @@ elif section == "Customer Segments":
         </div>
         """.format(
             fitness_stats.loc['KP781', 'mean'],
-            gender_dist.loc['KP481', 'Female']
+            stats['gender_dist'].loc['KP481', 'Female']
         ), unsafe_allow_html=True)
+
+elif section == "Target Audience Analysis":
+    st.title("Target Audience Analysis")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Age and Income Distribution by Product
+        fig = px.scatter(
+            df,
+            x='Age',
+            y='Income',
+            color='Product',
+            title='Target Audience Segmentation: Age vs Income',
+            labels={
+                'Age': 'Customer Age',
+                'Income': 'Annual Income ($)',
+                'Product': 'Treadmill Model'
+            },
+            color_discrete_sequence=px.colors.qualitative.Set2
+        )
+        
+        fig.update_traces(
+            marker=dict(size=10, line=dict(width=1, color='white')),
+            hovertemplate="<br>".join([
+                "Product: %{customdata[0]}",
+                "Age: %{x} years",
+                "Income: $%{y:,.0f}",
+                "Fitness Level: %{customdata[1]}",
+                "<extra></extra>"
+            ])
+        )
+        
+        fig.update_layout(
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='white'),
+            showlegend=True,
+            legend=dict(
+                bgcolor='rgba(0,0,0,0)',
+                bordercolor='rgba(255,255,255,0.1)',
+                borderwidth=1
+            ),
+            height=500
+        )
+        
+        fig.update_traces(customdata=df[['Product', 'Fitness']])
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Product-wise Customer Profile
+        product_profiles = pd.DataFrame({
+            'KP281': [
+                'Age: 18-30 years',
+                'Income: $25k-40k',
+                'Fitness: Beginner to Intermediate',
+                'Usage: 2-3 times/week',
+                'Gender: Mixed distribution',
+                'Price Sensitive'
+            ],
+            'KP481': [
+                'Age: 25-35 years',
+                'Income: $40k-75k',
+                'Fitness: Intermediate',
+                'Usage: 3-4 times/week',
+                'Gender: Balanced mix',
+                'Value-focused'
+            ],
+            'KP781': [
+                'Age: 30-50 years',
+                'Income: $75k+',
+                'Fitness: Intermediate to Advanced',
+                'Usage: 4-5 times/week',
+                'Gender: Slight male preference',
+                'Premium features priority'
+            ]
+        })
+        
+        st.markdown("""
+        <div class="insight-box">
+            <h3>Target Customer Profiles</h3>
+            <div style="display: flex; justify-content: space-between; margin-top: 15px;">
+        """, unsafe_allow_html=True)
+        
+        for product in ['KP281', 'KP481', 'KP781']:
+            st.markdown(f"""
+                <div style="flex: 1; margin: 0 10px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 5px;">
+                    <h4 style="color: #4A90E2;">{product}</h4>
+                    <ul style="list-style-type: none; padding-left: 0;">
+                        {''.join(f'<li style="margin: 5px 0;">{item}</li>' for item in product_profiles[product])}
+                    </ul>
+                </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown("</div></div>", unsafe_allow_html=True)
+    
+    with col2:
+        # Education Level Distribution
+        education_dist = stats['education_dist']
+        education_dist_reset = education_dist.reset_index()
+        
+        fig = px.bar(
+            education_dist_reset,
+            x='Product',
+            y=education_dist.columns,
+            title='Education Level Distribution by Product (%)',
+            labels={'value': 'Percentage', 'variable': 'Years of Education'},
+            color_discrete_sequence=px.colors.qualitative.Set3,
+            barmode='stack'
+        )
+        
+        fig.update_layout(
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='white'),
+            showlegend=True,
+            legend=dict(
+                bgcolor='rgba(0,0,0,0)',
+                bordercolor='rgba(255,255,255,0.1)',
+                borderwidth=1
+            ),
+            height=400
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Key Target Audience Insights
+        st.markdown("""
+        <div class="insight-box">
+            <h3>Key Target Audience Insights</h3>
+            <ul>
+                <li><strong>KP281 (Entry Level)</strong>
+                    <ul>
+                        <li>Attracts younger, budget-conscious customers</li>
+                        <li>Popular among beginners starting their fitness journey</li>
+                        <li>Preferred by students and early career professionals</li>
+                    </ul>
+                </li>
+                <li><strong>KP481 (Mid Range)</strong>
+                    <ul>
+                        <li>Appeals to established professionals</li>
+                        <li>Chosen by regular fitness enthusiasts</li>
+                        <li>Balanced feature-to-price consideration</li>
+                    </ul>
+                </li>
+                <li><strong>KP781 (Premium)</strong>
+                    <ul>
+                        <li>Preferred by high-income, fitness-focused individuals</li>
+                        <li>Attracts experienced users with specific requirements</li>
+                        <li>Strong correlation with higher education levels</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+        
+        <div class="insight-box">
+            <h3>Recommendations for Sales Team</h3>
+            <ul>
+                <li>Focus on fitness goals and budget for initial product selection</li>
+                <li>Consider customer's usage frequency expectations</li>
+                <li>Match product features with customer's fitness experience</li>
+                <li>Align price points with customer's income bracket</li>
+                <li>Highlight relevant features based on education and lifestyle</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
 
 elif section == "Usage Analysis":
     st.title("Usage Analysis")
@@ -484,7 +658,7 @@ elif section == "Usage Analysis":
         st.plotly_chart(fig, use_container_width=True)
         
         # Usage Statistics
-        usage_stats = df.groupby('Product')['Usage'].agg(['mean', 'median', 'std']).round(2)
+        usage_stats = stats['usage_stats']
         st.markdown("""
         <div class="insight-box">
             <h3>Usage Frequency Analysis</h3>
@@ -561,7 +735,7 @@ elif section == "Usage Analysis":
         st.plotly_chart(fig, use_container_width=True)
         
         # Miles Statistics
-        miles_stats = df.groupby('Product')['Miles'].agg(['mean', 'median', 'std']).round(2)
+        miles_stats = stats['miles_stats']
         st.markdown("""
         <div class="insight-box">
             <h3>Miles Coverage Analysis</h3>
@@ -604,7 +778,7 @@ elif section == "Financial Insights":
     
     with col1:
         # Income Statistics by Product
-        income_stats = df.groupby('Product')['Income'].agg(['mean', 'median', 'std']).round(2)
+        income_stats = stats['income_stats']
         st.markdown("""
         <div class="insight-box">
             <h3>Income Statistics by Product</h3>
