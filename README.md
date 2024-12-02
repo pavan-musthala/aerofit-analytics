@@ -39,29 +39,7 @@ An interactive data analytics dashboard built with Streamlit to analyze AeroFit'
 - **NumPy**: For numerical computations
 - **SciPy**: For statistical analysis
 
-### Key Components
-1. **Data Processing**: Efficient data manipulation using Pandas
-2. **Visualization**: Custom-built interactive charts using Plotly
-3. **Statistical Analysis**: Comprehensive statistical computations
-4. **UI/UX**: Professional dark theme with consistent styling
 
-## Installation & Setup 🚀
-
-1. Clone the repository:
-```bash
-git clone https://github.com/pavan-musthala/aerofit-analytics.git
-cd aerofit-analytics
-```
-
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-3. Run the dashboard:
-```bash
-streamlit run dashboard.py
-```
 
 ## Data Structure 📊
 
@@ -100,18 +78,6 @@ The analysis is based on the following customer attributes:
 
 ## Design Decisions 🎨
 
-### Color Scheme
-- Background: Dark blue-black (#0E1117)
-- Card Background: Dark gray (#1E1E1E)
-- Accent Color: Bright Blue (#4A90E2)
-- Text Color: White (#FFFFFF)
-
-### UI/UX Features
-- Responsive layout
-- Interactive visualizations
-- Consistent typography
-- Professional dark theme
-- Clear data presentation
 
 ## Key Insights 💡
 
@@ -126,25 +92,3 @@ The analysis is based on the following customer attributes:
 3. **Usage Patterns**
    - Higher fitness levels correlate with increased usage
    - Premium model users show higher engagement
-
-## Future Enhancements 🔮
-
-1. Predictive Analytics Integration
-2. Real-time Data Updates
-3. Advanced Customer Segmentation
-4. Enhanced Visualization Options
-5. Export Functionality for Reports
-
-## Contributing 🤝
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## License 📝
-This project is licensed under the MIT License - see the LICENSE file for details.
-
----
-Built with ❤️ for AeroFit Treadmills
